@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"log"
 	"os"
 	"os/signal"
+
+	"github.com/cyberis/peril/internal/pubsub"
+	"github.com/cyberis/peril/internal/routing"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -18,7 +21,21 @@ func main() {
 	}
 	defer conn.Close()
 
+	channel, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Could not create channel: %v", err)
+	}
+	defer channel.Close()
+
 	fmt.Println("Peril game server connected to RabbitMQ!")
+
+	// Send a pause message immediately to test the connection
+	err = pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+	if err != nil {
+		log.Printf("Error publishing pause message: %v", err)
+	} else {
+		log.Printf("Published initial pause message to exchange '%s' with key '%s'", routing.ExchangePerilDirect, routing.PauseKey)
+	}
 
 	// wait for ctrl+c to quit
 	signalChan := make(chan os.Signal, 1)
