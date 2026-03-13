@@ -37,7 +37,46 @@ func main() {
 	log.Printf("Declared and bound queue '%s' for user '%s'", q.Name, username)
 	defer ch.Close()
 
+	// Create a new GameState for the user
+	gameState := gamelogic.NewGameState(username)
+
+	//Display the client help message
+	gamelogic.PrintClientHelp()
+
+	// Start a repl for supported commands
+REPL:
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+		switch input[0] {
+		case "spawn":
+			err = gameState.CommandSpawn(input)
+			if err != nil {
+				log.Printf("Error executing spawn command: %v", err)
+			}
+		case "move":
+			_, err = gameState.CommandMove(input)
+			if err != nil {
+				log.Printf("Error executing move command: %v", err)
+			}
+		case "status":
+			gameState.CommandStatus()
+		case "spam":
+			fmt.Println("Spamming not allowed yet!")
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "quit":
+			gamelogic.PrintQuit()
+			break REPL
+		default:
+			log.Printf("Unknown command: %s. Type 'help' for a list of commands.", input[0])
+		}
+	}
+
 	// wait for ctrl+c to quit
+	fmt.Println("Press Ctrl+C to exit...")
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 	<-signalChan
