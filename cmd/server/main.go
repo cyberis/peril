@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/cyberis/peril/internal/gamelogic"
 	"github.com/cyberis/peril/internal/pubsub"
 	"github.com/cyberis/peril/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -29,15 +30,44 @@ func main() {
 
 	fmt.Println("Peril game server connected to RabbitMQ!")
 
-	// Send a pause message immediately to test the connection
-	err = pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
-	if err != nil {
-		log.Printf("Error publishing pause message: %v", err)
-	} else {
-		log.Printf("Published initial pause message to exchange '%s' with key '%s'", routing.ExchangePerilDirect, routing.PauseKey)
+	// Print the game server help function
+	gamelogic.PrintServerHelp()
+
+	// Start REPL
+REPL:
+	for {
+		input := gamelogic.GetInput()
+		if len(input) == 0 {
+			continue
+		}
+		switch input[0] {
+		case "help":
+			gamelogic.PrintServerHelp()
+		case "pause":
+			err := pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
+			if err != nil {
+				log.Printf("Error publishing pause message: %v", err)
+			} else {
+				log.Printf("Published pause message to exchange '%s' with key '%s'", routing.ExchangePerilDirect, routing.PauseKey)
+			}
+		case "resume":
+			err := pubsub.PublishJSON(channel, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: false})
+			if err != nil {
+				log.Printf("Error publishing resume message: %v", err)
+			} else {
+				log.Printf("Published resume message to exchange '%s' with key '%s'", routing.ExchangePerilDirect, routing.PauseKey)
+			}
+		case "quit":
+			log.Printf("Shutting down Peril server...")
+			break REPL
+
+		default:
+			log.Printf("Unknown command: %s. Type 'help' for a list of commands.", input)
+		}
 	}
 
 	// wait for ctrl+c to quit
+	fmt.Println("Press Ctrl+C to exit...")
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 	<-signalChan
