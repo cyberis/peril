@@ -27,7 +27,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error during client welcome: %v", err)
 	}
-	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
+	queueNamePause := fmt.Sprintf("%s.%s", routing.PauseKey, username)
+	queueNameMove := fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username)
 
 	// Create a new GameState for the user
 	gameState := gamelogic.NewGameState(username)
@@ -36,9 +37,15 @@ func main() {
 	gamelogic.PrintClientHelp()
 
 	// Consume pause messages for this user
-	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, queueName, routing.PauseKey, pubsub.QueueTypeTransient, handlerPause(gameState))
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, queueNamePause, routing.PauseKey, pubsub.QueueTypeTransient, handlerPause(gameState))
 	if err != nil {
 		log.Fatalf("Error subscribing to pause messages: %v", err)
+	}
+
+	// Consume move messages for this user
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, queueNameMove, routing.ArmyMovesKey, pubsub.QueueTypeTransient, handlerMove(gameState))
+	if err != nil {
+		log.Fatalf("Error subscribing to move messages: %v", err)
 	}
 
 	// Start a repl for supported commands
@@ -55,10 +62,23 @@ REPL:
 				log.Printf("Error executing spawn command: %v", err)
 			}
 		case "move":
-			_, err = gameState.CommandMove(input)
+			mv, err := gameState.CommandMove(input)
 			if err != nil {
 				log.Printf("Error executing move command: %v", err)
+				continue
 			}
+			moveChannel, err := conn.Channel()
+			if err != nil {
+				log.Printf("Error creating channel for move command: %v", err)
+				continue
+			}
+			defer moveChannel.Close()
+			err = pubsub.PublishJSON(moveChannel, routing.ExchangePerilTopic, routing.ArmyMovesKey, mv)
+			if err != nil {
+				log.Printf("Error publishing move command: %v", err)
+				continue
+			}
+			log.Printf("Published move command to exchange '%s' with key '%s': %+v", routing.ExchangePerilTopic, routing.ArmyMovesKey, mv)
 		case "status":
 			gameState.CommandStatus()
 		case "spam":
