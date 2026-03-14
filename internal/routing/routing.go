@@ -8,6 +8,8 @@ const (
 	PauseKey = "pause"
 
 	GameLogSlug = "game_logs"
+
+	GameLogsKey = "game_logs.*"
 )
 
 const (
