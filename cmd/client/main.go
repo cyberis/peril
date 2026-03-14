@@ -29,19 +29,17 @@ func main() {
 	}
 	queueName := fmt.Sprintf("%s.%s", routing.PauseKey, username)
 
-	// Decare and bind a queue for the user, and subscribe to the pause messages
-	ch, q, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilDirect, queueName, routing.PauseKey, pubsub.QueueTypeTransient)
-	if err != nil {
-		log.Fatalf("Error declaring and binding queue '%s': %v", queueName, err)
-	}
-	log.Printf("Declared and bound queue '%s' for user '%s'", q.Name, username)
-	defer ch.Close()
-
 	// Create a new GameState for the user
 	gameState := gamelogic.NewGameState(username)
 
 	//Display the client help message
 	gamelogic.PrintClientHelp()
+
+	// Consume pause messages for this user
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilDirect, queueName, routing.PauseKey, pubsub.QueueTypeTransient, handlerPause(gameState))
+	if err != nil {
+		log.Fatalf("Error subscribing to pause messages: %v", err)
+	}
 
 	// Start a repl for supported commands
 REPL:
