@@ -22,6 +22,12 @@ func main() {
 	}
 	defer conn.Close()
 
+	publishChannel, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("Could not create channel: %v", err)
+	}
+	defer publishChannel.Close()
+
 	//Ask the user for their username via the ClientWelcome function
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
@@ -67,13 +73,7 @@ REPL:
 				log.Printf("Error executing move command: %v", err)
 				continue
 			}
-			moveChannel, err := conn.Channel()
-			if err != nil {
-				log.Printf("Error creating channel for move command: %v", err)
-				continue
-			}
-			defer moveChannel.Close()
-			err = pubsub.PublishJSON(moveChannel, routing.ExchangePerilTopic, routing.ArmyMovesKey, mv)
+			err = pubsub.PublishJSON(publishChannel, routing.ExchangePerilTopic, routing.ArmyMovesKey, mv)
 			if err != nil {
 				log.Printf("Error publishing move command: %v", err)
 				continue
