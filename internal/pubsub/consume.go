@@ -15,6 +15,14 @@ const (
 	QueueTypeTransient
 )
 
+type AckType int
+
+const (
+	Ack AckType = iota
+	NackRequeue
+	NackDiscard
+)
+
 func DeclareAndBind(
 	conn *amqp.Connection,
 	exchange,
@@ -68,7 +76,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	queueType SimpleQueueType, // an enum to represent "durable" or "transient"
-	handler func(T),
+	handler func(T) AckType, // a handler function that processes the message and returns an acktype indicating how to acknowledge the message
 ) error {
 
 	ch, q, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
@@ -96,10 +104,28 @@ func SubscribeJSON[T any](
 				log.Printf("Error unmarshalling message: %v", err)
 				continue
 			}
-			handler(msg)
-			err = d.Ack(false)
-			if err != nil {
-				log.Printf("Error acknowledging message: %v", err)
+			ackType := handler(msg)
+			switch ackType {
+			case Ack:
+				err = d.Ack(false)
+				if err != nil {
+					log.Printf("Error acknowledging message: %v", err)
+				}
+				log.Printf("Acknowledged message with routing key '%s': %s", d.RoutingKey, string(d.Body))
+			case NackRequeue:
+				err = d.Nack(false, true)
+				if err != nil {
+					log.Printf("Error nack'ing message for requeue: %v", err)
+				}
+				log.Printf("Nack'ed message for requeue with routing key '%s': %s", d.RoutingKey, string(d.Body))
+			case NackDiscard:
+				err = d.Nack(false, false)
+				if err != nil {
+					log.Printf("Error nack'ing message for discard: %v", err)
+				}
+				log.Printf("Nack'ed message for discard with routing key '%s': %s", d.RoutingKey, string(d.Body))
+			default:
+				log.Printf("Unknown AckType returned by handler: %v. Message with routing key '%s' was not acknowledged.", ackType, d.RoutingKey)
 			}
 		}
 	}()
