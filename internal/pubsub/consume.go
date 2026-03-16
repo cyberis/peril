@@ -98,6 +98,7 @@ func SubscribeJSON[T any](
 	}
 
 	go func() {
+		defer ch.Close()
 		for d := range msgs {
 			var msg T
 			if err := json.Unmarshal(d.Body, &msg); err != nil {

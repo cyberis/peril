@@ -19,8 +19,8 @@ func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) pubsub.Ack
 func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) pubsub.AckType {
 	return func(move gamelogic.ArmyMove) pubsub.AckType {
 		defer fmt.Print("> ")
-		outcome := gs.HandleMove(move)
-		switch outcome {
+		moveOutcome := gs.HandleMove(move)
+		switch moveOutcome {
 		case gamelogic.MoveOutcomeSamePlayer:
 			return pubsub.NackDiscard
 		case gamelogic.MoveOutComeSafe:
