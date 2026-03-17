@@ -23,6 +23,11 @@ const (
 	NackDiscard
 )
 
+const (
+	DeadLetterExchangeHeader = "x-dead-letter-exchange"
+	DeadLetterExchangeName   = "peril_dlx"
+)
+
 func DeclareAndBind(
 	conn *amqp.Connection,
 	exchange,
@@ -41,6 +46,9 @@ func DeclareAndBind(
 	durable := queueType == QueueTypeDurable
 	autoDelete := queueType == QueueTypeTransient
 	exclusive := queueType == QueueTypeTransient
+	args := amqp.Table{
+		DeadLetterExchangeHeader: DeadLetterExchangeName,
+	}
 
 	q, err := ch.QueueDeclare(
 		queueName,  // name
@@ -48,7 +56,7 @@ func DeclareAndBind(
 		autoDelete, // delete when unused
 		exclusive,  // exclusive
 		false,      // no-wait
-		nil,        // arguments
+		args,       // arguments
 	)
 	if err != nil {
 		return nil, amqp.Queue{}, err
