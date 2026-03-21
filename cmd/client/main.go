@@ -49,9 +49,15 @@ func main() {
 	}
 
 	// Consume move messages for this user
-	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, queueNameMove, routing.ArmyMovesKey, pubsub.QueueTypeTransient, handlerMove(gameState))
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, queueNameMove, routing.ArmyMovesKey, pubsub.QueueTypeTransient, handlerMove(gameState, publishChannel))
 	if err != nil {
 		log.Fatalf("Error subscribing to move messages: %v", err)
+	}
+
+	// Consume all war recognition messages for any user -- this is dumb but is part of the exercise
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, "*"), pubsub.QueueTypeDurable, handlerWar(gameState))
+	if err != nil {
+		log.Fatalf("Error subscribing to war recognition messages: %v", err)
 	}
 
 	// Start a repl for supported commands
