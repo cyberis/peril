@@ -45,20 +45,38 @@ func handlerMove(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogi
 	}
 }
 
-func handlerWar(gs *gamelogic.GameState) func(gamelogic.RecognitionOfWar) pubsub.AckType {
+func handlerWar(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogic.RecognitionOfWar) pubsub.AckType {
 	return func(recog gamelogic.RecognitionOfWar) pubsub.AckType {
 		defer fmt.Print("> ")
-		warOutcome, _, _ := gs.HandleWar(recog) // For now we ignore winner and loser returns
+		warOutcome, winner, loser := gs.HandleWar(recog)
 		switch warOutcome {
 		case gamelogic.WarOutcomeNotInvolved:
-			return pubsub.NackRequeue // Allow other place to handle this message
+			return pubsub.NackRequeue // Allow other user to handle this message
 		case gamelogic.WarOutcomeNoUnits:
 			return pubsub.NackDiscard
 		case gamelogic.WarOutcomeOpponentWon:
+			outcomeMessage := fmt.Sprintf("%s won a war against %s", winner, loser)
+			err := publishGameLog(publishCh, gs.GetUsername(), outcomeMessage)
+			if err != nil {
+				log.Printf("Error publishing game log: %v", err)
+				return pubsub.NackRequeue // This could be due to a transient error, so we requeue to try again
+			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeYouWon:
+			outcomeMessage := fmt.Sprintf("%s won a war against %s", winner, loser)
+			err := publishGameLog(publishCh, gs.GetUsername(), outcomeMessage)
+			if err != nil {
+				log.Printf("Error publishing game log: %v", err)
+				return pubsub.NackRequeue // This could be due to a transient error, so we requeue to try again
+			}
 			return pubsub.Ack
 		case gamelogic.WarOutcomeDraw:
+			outcomeMessage := fmt.Sprintf("A war between %s and %s resulted in a draw", winner, loser)
+			err := publishGameLog(publishCh, gs.GetUsername(), outcomeMessage)
+			if err != nil {
+				log.Printf("Error publishing game log: %v", err)
+				return pubsub.NackRequeue // This could be due to a transient error, so we requeue to try again
+			}
 			return pubsub.Ack
 		default:
 			fmt.Println("error: unknown war outcome")

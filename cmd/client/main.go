@@ -55,7 +55,7 @@ func main() {
 	}
 
 	// Consume all war recognition messages for any user -- this is dumb but is part of the exercise
-	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, "*"), pubsub.QueueTypeDurable, handlerWar(gameState))
+	err = pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, routing.WarRecognitionsPrefix, fmt.Sprintf("%s.%s", routing.WarRecognitionsPrefix, "*"), pubsub.QueueTypeDurable, handlerWar(gameState, publishChannel))
 	if err != nil {
 		log.Fatalf("Error subscribing to war recognition messages: %v", err)
 	}
