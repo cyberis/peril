@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/cyberis/peril/internal/gamelogic"
 	"github.com/cyberis/peril/internal/pubsub"
@@ -88,7 +89,22 @@ REPL:
 		case "status":
 			gameState.CommandStatus()
 		case "spam":
-			fmt.Println("Spamming not allowed yet!")
+			if len(input) < 2 {
+				fmt.Println("Usage: spam <n>")
+				continue
+			}
+			times, err := strconv.Atoi(input[1])
+			if err != nil {
+				fmt.Println("Invalid number:", input[1])
+				continue
+			}
+			for i := 0; i < times; i++ {
+				logMessage := gamelogic.GetMaliciousLog()
+				err = publishGameLog(publishChannel, gameState.GetUsername(), logMessage)
+				if err != nil {
+					log.Printf("Error publishing malicious log: %v", err)
+				}
+			}
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "quit":
