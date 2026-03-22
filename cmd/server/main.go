@@ -30,13 +30,11 @@ func main() {
 
 	fmt.Println("Peril game server connected to RabbitMQ!")
 
-	// Create a Topic Queue for logs
-	logsChannel, logsQueue, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogsKey, pubsub.QueueTypeDurable)
+	// Subscribe to the game logs topic with a durable queue so we can see the history of games when we restart the server
+	err = pubsub.SubscribeGob(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogsKey, pubsub.QueueTypeDurable, handlerGameLog())
 	if err != nil {
-		log.Fatalf("Could not declare and bind logs queue: %v", err)
+		log.Fatalf("Could not subscribe to game logs: %v", err)
 	}
-	defer logsChannel.Close()
-	log.Printf("Declared and bound logs queue '%s'", logsQueue.Name)
 
 	// Print the game server help function
 	gamelogic.PrintServerHelp()
