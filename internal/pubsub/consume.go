@@ -94,6 +94,16 @@ func SubscribeJSON[T any](
 		return err
 	}
 
+	// Limit the prefetch count to 10 so we only get ten messages at a time until we ack/nack it, to avoid overwhelming the client with messages if they are slow to process
+	err = ch.Qos(
+		10,    // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+	if err != nil {
+		return err
+	}
+
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"",     // consumer
@@ -154,6 +164,16 @@ func SubscribeGob[T any](
 ) error {
 
 	ch, q, err := DeclareAndBind(conn, exchange, queueName, key, queueType)
+	if err != nil {
+		return err
+	}
+
+	// Limit the prefetch count to 10 so we only get ten messages at a time until we ack/nack it, to avoid overwhelming the client with messages if they are slow to process
+	err = ch.Qos(
+		10,    // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
 	if err != nil {
 		return err
 	}
