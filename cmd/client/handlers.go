@@ -36,9 +36,9 @@ func handlerMove(gs *gamelogic.GameState, publishCh *amqp.Channel) func(gamelogi
 			err := pubsub.PublishJSON(publishCh, routing.ExchangePerilTopic, key, war)
 			if err != nil {
 				log.Printf("Error publishing war recognition: %v", err)
-				return pubsub.NackRequeue // This is stupid and will flood queues but that is the point of the exercise
+				return pubsub.NackRequeue // This could be due to a transient error, so we requeue to try again
 			}
-			return pubsub.NackRequeue // This is stupid and will flood queues but that is the point of the exercise
+			return pubsub.Ack // We ack the move message regardless of the outcome of the war recognition publish, because the move itself was processed successfully
 		default:
 			return pubsub.NackDiscard
 		}
