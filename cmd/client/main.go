@@ -105,6 +105,7 @@ REPL:
 					log.Printf("Error publishing malicious log: %v", err)
 				}
 			}
+			fmt.Printf("Published %d malicious logs to exchange '%s' with key '%s'\n", times, routing.ExchangePerilTopic, routing.GameLogsKey)
 		case "help":
 			gamelogic.PrintClientHelp()
 		case "quit":
